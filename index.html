@@ -1,0 +1,317 @@
+`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Student Management System</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+/* Screens */
+.screen { display: none; }
+.active { display: block; }
+
+/* Container */
+.container {
+    background: rgba(255,255,255,0.05);
+    padding: 30px;
+    border-radius: 12px;
+    width: 420px;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+}
+
+/* Headings */
+h1, h2 {
+    margin-bottom: 15px;
+}
+
+/* Inputs */
+input {
+    width: 90%;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 6px;
+    border: 1px solid #475569;
+    background: #020617;
+    color: white;
+}
+
+/* Buttons */
+button {
+    padding: 10px 15px;
+    margin: 6px;
+    border: none;
+    border-radius: 6px;
+    background: #3b82f6;
+    color: white;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+button:hover {
+    background: #2563eb;
+}
+
+.back-btn {
+    background: #64748b;
+}
+
+/* Table */
+table {
+    width: 100%;
+    margin-top: 15px;
+    border-collapse: collapse;
+}
+
+th {
+    background: #1e293b;
+}
+
+td, th {
+    padding: 10px;
+    border-bottom: 1px solid #475569;
+    text-align: center;
+}
+
+tr:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+/* Small button */
+.small-btn {
+    background: #ef4444;
+    padding: 5px 8px;
+    font-size: 12px;
+}
+
+/* Date filter row */
+.date-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+    <div class="container">
+        <h1>🎓 Student Management System</h1>
+        <button onclick="showScreen('menu')">Start</button>
+    </div>
+</div>
+
+<!-- MENU -->
+<div id="menu" class="screen">
+    <div class="container">
+        <h2>Menu</h2>
+        <button onclick="showScreen('add')">Add Student</button>
+        <button onclick="showScreen('attendance')">Mark Attendance</button>
+        <button onclick="showScreen('view')">View Records</button>
+        <button onclick="showScreen('percent')">Percentage</button>
+        <br>
+        <button class="back-btn" onclick="showScreen('home')">Back</button>
+    </div>
+</div>
+
+<!-- ADD -->
+<div id="add" class="screen">
+    <div class="container">
+        <h2>Add Student</h2>
+        <input id="roll" placeholder="Roll Number">
+        <input id="name" placeholder="Student Name">
+        <button onclick="addStudent()">Add</button>
+        <br>
+        <button class="back-btn" onclick="showScreen('menu')">Back</button>
+    </div>
+</div>
+
+<!-- ATTENDANCE -->
+<div id="attendance" class="screen">
+    <div class="container">
+        <h2>Mark Attendance</h2>
+        <button onclick="markAttendance()">Start</button>
+        <br>
+        <button class="back-btn" onclick="showScreen('menu')">Back</button>
+    </div>
+</div>
+
+<!-- VIEW -->
+<div id="view" class="screen">
+    <div class="container">
+        <h2>Records</h2>
+
+        <div class="date-row">
+            <input type="date" id="searchDate">
+            <button onclick="showByDate()">Search</button>
+        </div>
+
+        <table id="recordsTable"></table>
+
+        <button onclick="showRecords()">Show All</button>
+        <br>
+        <button class="back-btn" onclick="showScreen('menu')">Back</button>
+    </div>
+</div>
+
+<!-- PERCENT -->
+<div id="percent" class="screen">
+    <div class="container">
+        <h2>Attendance Percentage</h2>
+        <div id="percentData"></div>
+        <button onclick="showPercent()">Calculate</button>
+        <br>
+        <button class="back-btn" onclick="showScreen('menu')">Back</button>
+    </div>
+</div>
+
+<script>
+let students = JSON.parse(localStorage.getItem("students")) || [];
+
+function saveData() {
+    localStorage.setItem("students", JSON.stringify(students));
+}
+
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+function addStudent() {
+    let roll = document.getElementById("roll").value.trim();
+    let name = document.getElementById("name").value.trim();
+
+    if (!roll || !name) {
+        alert("Enter all fields!");
+        return;
+    }
+
+    students.push({ roll, name, attendance: {} });
+    saveData();
+
+    alert("Student Added!");
+    document.getElementById("roll").value = "";
+    document.getElementById("name").value = "";
+}
+
+function markAttendance() {
+    if (students.length === 0) {
+        alert("No students!");
+        return;
+    }
+
+    let today = new Date().toISOString().split("T")[0];
+
+    for (let i = 0; i < students.length; i++) {
+        let s = students[i];
+
+        let present = confirm(`Is ${s.name} present today (${today})?`);
+
+        // Store attendance properly
+        if (!s.attendance) s.attendance = {};
+        s.attendance[today] = present;
+    }
+
+    saveData();
+    alert("Attendance marked for all students!");
+}
+
+function showRecords() {
+    let table = document.getElementById("recordsTable");
+
+    table.innerHTML = `
+        <tr>
+            <th>Roll</th>
+            <th>Name</th>
+            <th>Total Days</th>
+            <th>Action</th>
+        </tr>
+    `;
+
+    students.forEach((s, i) => {
+        let totalDays = Object.keys(s.attendance).length;
+
+        table.innerHTML += `
+            <tr>
+                <td>${s.roll}</td>
+                <td>${s.name}</td>
+                <td>${totalDays}</td>
+                <td><button class="small-btn" onclick="deleteStudent(${i})">Delete</button></td>
+            </tr>
+        `;
+    });
+}
+
+function showByDate() {
+    let date = document.getElementById("searchDate").value;
+
+    if (!date) {
+        alert("Select a date!");
+        return;
+    }
+
+    let table = document.getElementById("recordsTable");
+
+    table.innerHTML = `
+        <tr>
+            <th>Roll</th>
+            <th>Name</th>
+            <th>Status</th>
+        </tr>
+    `;
+
+    students.forEach(s => {
+        let status = s.attendance[date];
+
+        let result = status === true ? "Present ✅" :
+                     status === false ? "Absent ❌" : "No Data";
+
+        table.innerHTML += `
+            <tr>
+                <td>${s.roll}</td>
+                <td>${s.name}</td>
+                <td>${result}</td>
+            </tr>
+        `;
+    });
+}
+
+function deleteStudent(index) {
+    students.splice(index, 1);
+    saveData();
+    showRecords();
+}
+
+function showPercent() {
+    let div = document.getElementById("percentData");
+    div.innerHTML = "";
+
+    students.forEach(s => {
+        let total = Object.keys(s.attendance).length;
+        let present = Object.values(s.attendance).filter(v => v).length;
+
+        let percent = total ? ((present / total) * 100).toFixed(2) : 0;
+
+        div.innerHTML += `<p>${s.name} → ${percent}%</p>`;
+    });
+}
+</script>
+
+</body>
+</html>
+
